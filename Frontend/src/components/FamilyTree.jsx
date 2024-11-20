@@ -1,5 +1,6 @@
 import React from "react";
 import Tree from "react-d3-tree";
+import { rawTreeData } from "../data/treeData";
 
 const FamilyTreeComponent = () => {
   const transformTreeData = (data) => {
@@ -19,82 +20,7 @@ const FamilyTreeComponent = () => {
     return processNode(data);
   };
 
-  const rawTreeData = {
-    name: "Kakek",
-    attributes: { dob: "1950-01-01", status: "Hidup" },
-    spouse: { name: "Nenek", dob: "1952-02-20", status: "Hidup" },
-    children: [
-      {
-        name: "Ayah",
-        attributes: { dob: "1980-03-15", status: "Hidup" },
-        spouse: { name: "Ibu", dob: "1985-06-20", status: "Hidup" },
-        children: [
-          {
-            name: "Anak 1",
-            attributes: { dob: "2005-07-10", status: "Hidup" },
-            spouse: { name: "Mantu", dob: "1990-07-20", status: "Hidup" },
-            children: [
-              {
-                name: "Cucu 1",
-                attributes: { dob: "2025-01-01", status: "Hidup" },
-              },
-              {
-                name: "Cucu 2",
-                attributes: { dob: "2027-01-01", status: "Hidup" },
-              },
-            ],
-          },
-          {
-            name: "Anak 2",
-            attributes: { dob: "2008-09-22", status: "Hidup" },
-            spouse: { name: "Mantu 2", dob: "2010-01-01", status: "Hidup" },
-            children: [
-              {
-                name: "Cucu 3",
-                attributes: { dob: "2030-05-15", status: "Hidup" },
-                spouse: { name: "Cucu 3's Spouse", dob: "2032-01-20", status: "Hidup" },
-                children: [
-                  {
-                    name: "Cicit 1",
-                    attributes: { dob: "2050-06-10", status: "Hidup" },
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            name: "Anak 3",
-            attributes: { dob: "2012-01-10", status: "Hidup" },
-          },
-        ],
-      },
-      {
-        name: "Paman",
-        attributes: { dob: "1985-04-10", status: "Hidup" },
-        spouse: { name: "Bibi", dob: "1987-08-22", status: "Hidup" },
-        children: [
-          {
-            name: "Sepupu 1",
-            attributes: { dob: "2010-03-15", status: "Hidup" },
-            children: [
-              {
-                name: "Keponakan 1",
-                attributes: { dob: "2030-02-10", status: "Hidup" },
-              },
-            ],
-          },
-          {
-            name: "Sepupu 2",
-            attributes: { dob: "2012-07-20", status: "Hidup" },
-          },
-        ],
-      },
-      {
-        name: "Bibi 2",
-        attributes: { dob: "1990-11-25", status: "Hidup" },
-      },
-    ],
-  };
+  
   
 
   const treeData = transformTreeData(rawTreeData);
@@ -112,6 +38,18 @@ const FamilyTreeComponent = () => {
 
           return (
             <>
+              {/* Horizontal line for spouse connection */}
+              {nodeDatum.spouse && (
+                <line
+                  x1="-100"
+                  y1="0"
+                  x2="-200"
+                  y2="0"
+                  stroke="#999"
+                  strokeWidth="2"
+                />
+              )}
+
               {/* Node Utama */}
               <foreignObject
                 width="200"
