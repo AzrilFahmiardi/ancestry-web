@@ -95,11 +95,11 @@ const FamilyTreeComponent = () => {
 
           // Garis koneksi pasangan
           if (target.data.isSpouse) {
-            return `M${source.x},${source.y}H${target.x}`;
+            // return `M${source.x},${source.y}H${target.x}`;
           }
 
           // Garis koneksi parent-child (vertikal)
-          return `M${source.x},${source.y}V${(source.y + target.y) / 2}H${target.x}V${target.y}`;
+          return `M${source.x -115},${source.y}V${(source.y + target.y) / 2}H${target.x}V${target.y}`;
         }}
       />
     </div>
