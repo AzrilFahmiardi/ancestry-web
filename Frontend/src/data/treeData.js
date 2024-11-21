@@ -1,4 +1,4 @@
-export const rawTreeData = {
+export const TreeData = {
     name: "Kakek",
     attributes: { dob: "1950-01-01", status: "Hidup" },
     spouse: { name: "Nenek", dob: "1952-02-20", status: "Hidup" },
