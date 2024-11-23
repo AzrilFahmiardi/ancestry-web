@@ -1,4 +1,3 @@
-// familyTreeService.js
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5000';
@@ -27,7 +26,7 @@ class FamilyTreeService {
     // Add new family member
     async addFamilyMember(memberData) {
         try {
-            const response = await this.api.post('/family-member', memberData);
+            const response = await this.api.post('/family', memberData);
             return response.data;
         } catch (error) {
             console.error('Error adding family member:', error);
@@ -38,7 +37,8 @@ class FamilyTreeService {
     // Update family member
     async updateFamilyMember(id, memberData) {
         try {
-            const response = await this.api.put(`/family-member/${id}`, memberData);
+            const response = await this.api.put(`/family/${id}`, memberData);
+            
             return response.data;
         } catch (error) {
             console.error('Error updating family member:', error);
@@ -49,11 +49,26 @@ class FamilyTreeService {
     // Delete family member
     async deleteFamilyMember(id) {
         try {
-            const response = await this.api.delete(`/family-member/${id}`);
+            const response = await this.api.delete(`/family/${id}`);
             return response.data;
         } catch (error) {
             console.error('Error deleting family member:', error);
             throw new Error('Failed to delete family member');
+        }
+    }
+
+    // Add spouse to a family member
+    async addSpouse(mainMemberId, spouseData) {
+        try {
+            // Add spouse first, then link to main member
+            const spouseResponse = await this.api.post('/family', {
+                ...spouseData,
+                spouseId: mainMemberId
+            });
+            return spouseResponse.data;
+        } catch (error) {
+            console.error('Error adding spouse:', error);
+            throw new Error('Failed to add spouse');
         }
     }
 }

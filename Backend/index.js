@@ -65,17 +65,18 @@ app.get('/treedata', async (req, res) => {
         const buildFamilyTree = (data) => {
             // Create a map for quick node lookup
             const nodeMap = new Map();
-
+        
             // First pass: create all nodes
             data.forEach(row => {
                 nodeMap.set(row.id, {
+                    id: row.id, // Tambahkan baris ini untuk menyertakan ID
                     name: row.name,
                     attributes: {
                         dob: row.dob.toISOString().split('T')[0],
                         status: row.status
                     }
                 });
-
+        
                 // Add spouse information if exists
                 if (row.spouse_name) {
                     nodeMap.get(row.id).spouse = {
@@ -85,7 +86,7 @@ app.get('/treedata', async (req, res) => {
                     };
                 }
             });
-
+        
             // Second pass: build the tree structure
             data.forEach(row => {
                 if (row.path) {
@@ -102,7 +103,7 @@ app.get('/treedata', async (req, res) => {
                     }
                 }
             });
-
+        
             // Return the root node
             const rootNode = data.find(row => row.level === 0);
             return rootNode ? nodeMap.get(rootNode.id) : null;
@@ -139,21 +140,21 @@ app.post('/family', async (req, res) => {
         
         // If parent is provided, create relationship
         if (parentId) {
-            // Insert direct relationship (depth = 1)
+            // Insert self-relationship first
             await pool.query(
-                'INSERT INTO KeluargaHubungan (ancestor_id, descendant_id, depth) VALUES (?, ?, 1)',
-                [parentId, newMemberId]
-            );
-            
-            // Insert self-relationship
-            await pool.query(
-                'INSERT INTO KeluargaHubungan (ancestor_id, descendant_id, depth) VALUES (?, ?, 0)',
+                'INSERT IGNORE INTO KeluargaHubungan (ancestor_id, descendant_id, depth) VALUES (?, ?, 0)',
                 [newMemberId, newMemberId]
             );
             
-            // Insert inherited relationships
+            // Insert direct relationship (depth = 1)
+            await pool.query(
+                'INSERT IGNORE INTO KeluargaHubungan (ancestor_id, descendant_id, depth) VALUES (?, ?, 1)',
+                [parentId, newMemberId]
+            );
+            
+            // Insert inherited relationships with IGNORE to prevent duplicates
             await pool.query(`
-                INSERT INTO KeluargaHubungan (ancestor_id, descendant_id, depth)
+                INSERT IGNORE INTO KeluargaHubungan (ancestor_id, descendant_id, depth)
                 SELECT kh.ancestor_id, ?, kh.depth + 1
                 FROM KeluargaHubungan kh
                 WHERE kh.descendant_id = ?
@@ -168,19 +169,40 @@ app.post('/family', async (req, res) => {
 });
 
 app.put('/family/:id', async (req, res) => {
+    const connection = await pool.getConnection();
     try {
+        await connection.beginTransaction();
+        
         const { id } = req.params;
         const { name, dob, status, spouseId } = req.body;
         
-        await pool.query(
-            'UPDATE Keluarga SET name = ?, dob = ?, status = ?, id_spouse = ? WHERE id = ?',
-            [name, dob, status, spouseId, id]
+        // Update the main family member
+        await connection.query(
+            'UPDATE Keluarga SET name = ?, dob = ?, status = ? WHERE id = ?',
+            [name, dob, status, id]
         );
         
+        // If spouse is being added/updated
+        if (spouseId) {
+            // Update reciprocal spouse references
+            await connection.query(
+                'UPDATE Keluarga SET id_spouse = ? WHERE id = ?',
+                [id, spouseId]
+            );
+            await connection.query(
+                'UPDATE Keluarga SET id_spouse = ? WHERE id = ?',
+                [spouseId, id]
+            );
+        }
+        
+        await connection.commit();
         res.json({ message: 'Family member updated successfully' });
     } catch (error) {
+        await connection.rollback();
         console.error('Error updating family member:', error);
         res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        connection.release();
     }
 });
 

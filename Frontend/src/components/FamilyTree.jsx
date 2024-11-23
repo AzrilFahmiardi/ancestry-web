@@ -14,6 +14,15 @@ const FamilyTreeComponent = () => {
     nodeData: null,
     isSpouse: false
   });
+  const [isNodeFormVisible, setIsNodeFormVisible] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    dob: "",
+    status: "",
+    parentID: null,
+    spouseID:null
+  });
+
 
   useEffect(() => {
     loadFamilyTree();
@@ -51,29 +60,204 @@ const FamilyTreeComponent = () => {
       x: event.pageX,
       y: event.pageY,
       nodeData: displayData,
-      isSpouse
+      isSpouse,
+      nodeId: nodeDatum.id,
     });
     
   };
 
   const handleAddChild = () => {
-    console.log("Add child for:", contextMenu.nodeData);
+    // Find the parent ID from the node's path or other identifiable information
+    const parentId = contextMenu.nodeData.id; // This needs to be sourced correctly
+    setFormData({
+      name: "",
+      dob: "",
+      status: "",
+      parentID: parentId,
+      spouseID: null
+    });
+    setIsNodeFormVisible(true);
     setContextMenu({ ...contextMenu, visible: false });
   };
 
   const handleAddSpouse = () => {
-    console.log("Add spouse for:", contextMenu.nodeData);
+    const currentNodeId = contextMenu.nodeData.id; // This needs to be sourced correctly
+    setFormData({
+      name: "",
+      dob: "",
+      status: "",
+      parentID: null,
+      spouseID: currentNodeId
+    });
+    setIsNodeFormVisible(true);
     setContextMenu({ ...contextMenu, visible: false });
   };
 
   const handleEdit = () => {
-    console.log("Edit for:", contextMenu.nodeData);
+    const editData = contextMenu.isSpouse 
+        ? contextMenu.nodeData 
+        : contextMenu.nodeData;
+
+    // Store the ID we'll use for the update
+    const editId = contextMenu.isSpouse 
+        ? contextMenu.nodeData.id 
+        : contextMenu.nodeData.id;
+
+    setFormData({
+        name: editData.name,
+        dob: editData.attributes?.dob || '',
+        status: editData.attributes?.status || '',
+        parentID: null,
+        spouseID: editData.spouse ? editData.id : null,
+        editId: editId // Store the edit ID in the form data
+    });
+
+    setIsNodeFormVisible(true);
     setContextMenu({ ...contextMenu, visible: false });
+};
+
+  const handleDelete = async () => {
+    try {
+      const deleteId = contextMenu.nodeData.id;
+      await familyTreeService.deleteFamilyMember(deleteId);
+      
+      // Reload family tree after deletion
+      loadFamilyTree();
+      
+      setContextMenu({ ...contextMenu, visible: false });
+    } catch (error) {
+      console.error("Error deleting family member:", error);
+      // Optionally show error message to user
+    }
   };
-  const handleDelete = () => {
-    console.log("Delete for:", contextMenu.nodeData);
-    setContextMenu({ ...contextMenu, visible: false });
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
   };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+        const submissionData = {
+            name: formData.name,
+            dob: formData.dob,
+            status: formData.status,
+            spouseId: formData.spouseID
+        };
+
+        // If we have an editId, we're updating
+        if (formData.editId) {
+            await familyTreeService.updateFamilyMember(formData.editId, submissionData);
+        } else if (formData.parentID || formData.spouseID) {
+            // Add operation
+            await familyTreeService.addFamilyMember({
+                ...submissionData,
+                parentId: formData.parentID
+            });
+        }
+
+        // Reset form and reload tree
+        setFormData({
+            name: "",
+            dob: "",
+            status: "",
+            parentID: null,
+            spouseID: null,
+            editId: null
+        });
+        
+        await loadFamilyTree();
+        setIsNodeFormVisible(false);
+        setContextMenu({ visible: false, nodeData: null });
+    } catch (error) {
+        console.error("Error adding/editing family member:", error);
+    }
+};
+const nodeForm = () => {
+  if (!isNodeFormVisible) return null;
+
+  return (
+    <div className="fixed top-0 left-0 w-screen h-screen bg-black bg-opacity-50 flex justify-center items-center z-50">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <h2 className="form-title text-xl font-semibold mb-4 text-center">
+          {formData.spouseID ? 'Add Spouse' : 
+           formData.parentID ? 'Add Child' : 
+           'Edit Family Member'}
+        </h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Name</label>
+            <input 
+              type="text" 
+              name="name"
+              placeholder="Enter name"
+              value={formData.name}
+              onChange={handleInputChange}
+              required
+              className="w-full mt-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+            <input 
+              type="date" 
+              name="dob"
+              value={formData.dob}
+              onChange={handleInputChange}
+              className="w-full mt-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <div className="flex items-center space-x-4 mt-2">
+              <label className="inline-flex items-center">
+                <input 
+                  type="radio" 
+                  name="status"
+                  value="hidup"
+                  checked={formData.status === "hidup"}
+                  onChange={handleInputChange}
+                  className="text-blue-500 focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="ml-2">Hidup</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input 
+                  type="radio" 
+                  name="status"
+                  value="mati"
+                  checked={formData.status === "mati"}
+                  onChange={handleInputChange}
+                  className="text-blue-500 focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="ml-2">Mati</span>
+              </label>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <button 
+              type="button" 
+              className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+              onClick={() => setIsNodeFormVisible(false)}
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              {formData.spouseID || formData.parentID ? 'Add' : 'Update'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
   const renderContextMenu = () => {
     if (!contextMenu.visible) return null;
@@ -200,6 +384,7 @@ const FamilyTreeComponent = () => {
             }}
           />
           {renderContextMenu()}
+          {nodeForm()}
         </>
       )}
     </div>
