@@ -51,20 +51,20 @@ const FamilyTreeComponent = () => {
   const handleRightClick = (nodeDatum, event, isSpouse = false) => {
     event.preventDefault();
     event.stopPropagation();
+
+    console.log("Right Click Node Data:", nodeDatum);
+    console.log("Is Spouse:", isSpouse);
     
-    // Menentukan data yang akan ditampilkan berdasarkan apakah yang diklik adalah spouse atau bukan
-    const displayData = isSpouse ? nodeDatum.spouse : nodeDatum;
-    
+    // Use the nodeDatum directly as it's already properly formatted in renderCustomNode
     setContextMenu({
-      visible: true,
-      x: event.pageX,
-      y: event.pageY,
-      nodeData: displayData,
-      isSpouse,
-      nodeId: nodeDatum.id,
+        visible: true,
+        x: event.pageX,
+        y: event.pageY,
+        nodeData: nodeDatum,
+        isSpouse,
+        nodeId: isSpouse ? nodeDatum.id_spouse : nodeDatum.id,
     });
-    
-  };
+};
 
   const handleAddChild = () => {
     // Find the parent ID from the node's path or other identifiable information
@@ -94,22 +94,41 @@ const FamilyTreeComponent = () => {
   };
 
   const handleEdit = () => {
-    const editData = contextMenu.isSpouse 
-        ? contextMenu.nodeData 
-        : contextMenu.nodeData;
+    // Determine if we're editing a spouse
+    const isEditingSpouse = contextMenu.isSpouse;
+    
+    // Get the correct data based on whether we're editing main person or spouse
+    let editData;
+    let editId;
+    
+    if (isEditingSpouse) {
+        // For spouse, use the spouse data
+        editData = {
+            name: contextMenu.nodeData.name,
+            dob: contextMenu.nodeData.dob,
+            status: contextMenu.nodeData.status
+        };
+        editId = contextMenu.nodeData.id;
+    } else {
+        // For main person, use the main data     
+        editData = {
+            name: contextMenu.nodeData.name,
+            dob: contextMenu.nodeData.attributes?.dob,
+            status: contextMenu.nodeData.attributes?.status
+        };
+        editId = contextMenu.nodeData.id;
+    }
 
-    // Store the ID we'll use for the update
-    const editId = contextMenu.isSpouse 
-        ? contextMenu.nodeData.id 
-        : contextMenu.nodeData.id;
+    console.log("Editing:", { isEditingSpouse, editData, editId });
 
     setFormData({
-        name: editData.name,
-        dob: editData.attributes?.dob || '',
-        status: editData.attributes?.status || '',
+        name: editData.name || '',
+        dob: editData.dob || '',
+        status: editData.status || '',
         parentID: null,
-        spouseID: editData.spouse ? editData.id : null,
-        editId: editId // Store the edit ID in the form data
+        spouseID: null,
+        editId: editId,
+        isEditingSpouse: isEditingSpouse
     });
 
     setIsNodeFormVisible(true);
@@ -145,18 +164,28 @@ const FamilyTreeComponent = () => {
         const submissionData = {
             name: formData.name,
             dob: formData.dob,
-            status: formData.status,
-            spouseId: formData.spouseID
+            status: formData.status
         };
 
-        // If we have an editId, we're updating
+        console.log('Submitting update:', {
+            id: formData.editId,
+            data: submissionData,
+            isSpouse: formData.isEditingSpouse
+        });
+
         if (formData.editId) {
-            await familyTreeService.updateFamilyMember(formData.editId, submissionData);
+            // Edit existing person or spouse
+            await familyTreeService.updateFamilyMember(
+                formData.editId,
+                submissionData,
+                formData.isEditingSpouse
+            );
         } else if (formData.parentID || formData.spouseID) {
-            // Add operation
+            // Add new person
             await familyTreeService.addFamilyMember({
                 ...submissionData,
-                parentId: formData.parentID
+                parentId: formData.parentID,
+                spouseId: formData.spouseID
             });
         }
 
@@ -167,7 +196,8 @@ const FamilyTreeComponent = () => {
             status: "",
             parentID: null,
             spouseID: null,
-            editId: null
+            editId: null,
+            isEditingSpouse: false
         });
         
         await loadFamilyTree();
@@ -175,6 +205,7 @@ const FamilyTreeComponent = () => {
         setContextMenu({ visible: false, nodeData: null });
     } catch (error) {
         console.error("Error adding/editing family member:", error);
+        alert("Error updating family member. Please try again.");
     }
 };
 const nodeForm = () => {
@@ -340,7 +371,17 @@ const nodeForm = () => {
               stroke="#000"
               strokeWidth="1"
             />
-            <g onContextMenu={(e) => handleRightClick(nodeDatum, e, true)}>
+            {/* Pass spouse data directly to context menu */}
+            <g onContextMenu={(e) => handleRightClick(
+              { 
+                id: nodeDatum.spouse.id,
+                name: nodeDatum.spouse.name,
+                dob: nodeDatum.spouse.dob,
+                status: nodeDatum.spouse.status
+              }, 
+              e, 
+              true
+            )}>
               <foreignObject
                 width="200"
                 height="300"
@@ -360,7 +401,8 @@ const nodeForm = () => {
         )}
       </g>
     );
-  };
+};
+
 
   return (
     <div 

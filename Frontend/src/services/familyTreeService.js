@@ -35,10 +35,13 @@ class FamilyTreeService {
     }
 
     // Update family member
-    async updateFamilyMember(id, memberData) {
+    async updateFamilyMember(id, memberData, isSpouse = false) {
         try {
-            const response = await this.api.put(`/family/${id}`, memberData);
-            
+            console.log('Updating member:', { id, memberData, isSpouse });
+            const response = await this.api.put(`/family/${id}`, {
+                ...memberData,
+                isSpouse  // Pass the isSpouse flag to the backend
+            });
             return response.data;
         } catch (error) {
             console.error('Error updating family member:', error);

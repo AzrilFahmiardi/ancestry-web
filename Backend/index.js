@@ -80,6 +80,7 @@ app.get('/treedata', async (req, res) => {
                 // Add spouse information if exists
                 if (row.spouse_name) {
                     nodeMap.get(row.id).spouse = {
+                        id:row.id_spouse,
                         name: row.spouse_name,
                         dob: row.spouse_dob.toISOString().split('T')[0],
                         status: row.spouse_status
@@ -174,33 +175,47 @@ app.put('/family/:id', async (req, res) => {
         await connection.beginTransaction();
         
         const { id } = req.params;
-        const { name, dob, status, spouseId } = req.body;
+        const { name, dob, status, isSpouse } = req.body;
         
-        // Update the main family member
-        await connection.query(
-            'UPDATE Keluarga SET name = ?, dob = ?, status = ? WHERE id = ?',
-            [name, dob, status, id]
-        );
-        
-        // If spouse is being added/updated
-        if (spouseId) {
-            // Update reciprocal spouse references
-            await connection.query(
-                'UPDATE Keluarga SET id_spouse = ? WHERE id = ?',
-                [id, spouseId]
+        console.log('Updating member:', { id, name, dob, status, isSpouse });
+
+        if (isSpouse) {
+            // If updating a spouse, we need to find the correct record
+            // First, check if this ID exists in id_spouse column
+            const [spouseCheck] = await connection.query(
+                'SELECT id FROM Keluarga WHERE id = ?',
+                [id]
             );
+
+            if (spouseCheck.length > 0) {
+                // Update the spouse record
+                await connection.query(
+                    'UPDATE Keluarga SET name = ?, dob = ?, status = ? WHERE id = ?',
+                    [name, dob, status, id]
+                );
+            } else {
+                throw new Error('Spouse record not found');
+            }
+        } else {
+            // Update main family member
             await connection.query(
-                'UPDATE Keluarga SET id_spouse = ? WHERE id = ?',
-                [spouseId, id]
+                'UPDATE Keluarga SET name = ?, dob = ?, status = ? WHERE id = ?',
+                [name, dob, status, id]
             );
         }
         
         await connection.commit();
-        res.json({ message: 'Family member updated successfully' });
+        res.json({ 
+            message: 'Family member updated successfully',
+            isSpouse: isSpouse
+        });
     } catch (error) {
         await connection.rollback();
         console.error('Error updating family member:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ 
+            error: 'Internal server error',
+            details: error.message 
+        });
     } finally {
         connection.release();
     }
@@ -209,6 +224,8 @@ app.put('/family/:id', async (req, res) => {
 app.delete('/family/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        console.log(id);
+        
         
         // Delete relationships
         await pool.query('DELETE FROM KeluargaHubungan WHERE ancestor_id = ? OR descendant_id = ?', [id, id]);
