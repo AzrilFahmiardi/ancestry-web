@@ -13,14 +13,42 @@ app.get("/", (req, res) => {
     res.status(200).send("OK");
 });
 
-app.get('/treedata', async (req, res) => {
+app.get('/trees', async (req, res) => {
     try {
-        // await pool.query('SET SESSION cte_max_recursion_depth = 1000;');
+        const [trees] = await pool.query('SELECT * FROM FamilyTree ORDER BY created_at DESC');
+        res.json(trees);
+    } catch (error) {
+        console.error('Error fetching trees:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/trees', async (req, res) => {
+    try {
+        const { name } = req.body;
+        const [result] = await pool.query(
+            'INSERT INTO FamilyTree (name) VALUES (?)',
+            [name]
+        );
+        res.status(201).json({ 
+            id: result.insertId, 
+            name,
+            message: 'Family tree created successfully' 
+        });
+    } catch (error) {
+        console.error('Error creating family tree:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+app.get('/treedata/:treeId', async (req, res) => {
+    try {
+        const { treeId } = req.params;
         await pool.query('SET FOREIGN_KEY_CHECKS=0;');
         
         const [rows] = await pool.query(`
             WITH RECURSIVE TreeHierarchy AS (
-                -- Base case: find the root (Kakek/Nenek - person with no parents)
                 SELECT 
                     k.id,
                     k.name,
@@ -35,10 +63,10 @@ app.get('/treedata', async (req, res) => {
                     FROM KeluargaHubungan kh
                     WHERE kh.descendant_id = k.id AND kh.ancestor_id != k.id
                 )
+                AND k.tree_id = ?
 
                 UNION ALL
 
-                -- Recursive part: find all descendants
                 SELECT 
                     k.id,
                     k.name,
@@ -60,7 +88,7 @@ app.get('/treedata', async (req, res) => {
             FROM TreeHierarchy h
             LEFT JOIN Keluarga s ON h.id_spouse = s.id
             ORDER BY h.level, h.id;
-        `);
+        `, [treeId]);
 
         const buildFamilyTree = (data) => {
             // Create a map for quick node lookup
@@ -121,12 +149,11 @@ app.get('/treedata', async (req, res) => {
 
 app.post('/family', async (req, res) => {
     try {
-        const { name, dob, status, parentId, spouseId } = req.body;
+        const { name, dob, status, parentId, spouseId, treeId } = req.body;
         
-        // Insert new family member
         const [result] = await pool.query(
-            'INSERT INTO Keluarga (name, dob, status, id_spouse) VALUES (?, ?, ?, ?)',
-            [name, dob, status, spouseId || null]
+            'INSERT INTO Keluarga (name, dob, status, id_spouse, tree_id) VALUES (?, ?, ?, ?, ?)',
+            [name, dob, status, spouseId || null, treeId]
         );
         
         const newMemberId = result.insertId;

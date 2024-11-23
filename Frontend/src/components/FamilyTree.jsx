@@ -3,7 +3,7 @@ import Tree from "react-d3-tree";
 import { familyTreeService } from "../services/familyTreeService";
 import NodeCard from "./NodeCard";
 
-const FamilyTreeComponent = () => {
+const FamilyTreeComponent = ({treeId}) => {
   const [treeData, setTreeData] = useState();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,7 +38,7 @@ const FamilyTreeComponent = () => {
   const loadFamilyTree = async () => {
     try {
       setLoading(true);
-      const data = await familyTreeService.getFamilyTree();
+      const data = await familyTreeService.getFamilyTree(treeId);
       setTreeData(data);
       setError(null);
     } catch (err) {

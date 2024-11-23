@@ -12,10 +12,30 @@ class FamilyTreeService {
         });
     }
 
-    // Fetch family tree data
-    async getFamilyTree() {
+    async getAllTrees() {
         try {
-            const response = await this.api.get('/treedata');
+            const response = await this.api.get('/trees');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching trees:', error);
+            throw new Error('Failed to fetch family trees');
+        }
+    }
+
+    async createTree(name) {
+        try {
+            const response = await this.api.post('/trees', { name });
+            return response.data;
+        } catch (error) {
+            console.error('Error creating family tree:', error);
+            throw new Error('Failed to create family tree');
+        }
+    }
+
+    // Fetch family tree data
+    async getFamilyTree(treeId) {
+        try {
+            const response = await this.api.get(`/treedata/${treeId}`);
             return response.data;
         } catch (error) {
             console.error('Error fetching family tree:', error);
@@ -26,7 +46,10 @@ class FamilyTreeService {
     // Add new family member
     async addFamilyMember(memberData) {
         try {
-            const response = await this.api.post('/family', memberData);
+            const response = await this.api.post('/family', {
+                ...memberData,
+                treeId: memberData.treeId
+            });
             return response.data;
         } catch (error) {
             console.error('Error adding family member:', error);
