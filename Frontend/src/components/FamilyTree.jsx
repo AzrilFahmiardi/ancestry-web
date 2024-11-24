@@ -406,7 +406,7 @@ const nodeForm = () => {
 
   return (
     <div 
-      className="w-full h-[90vh] flex justify-center items-center bg-[green]"
+      className="w-full h-[100vh] flex justify-center items-center bg-transparent"
       onContextMenu={(e) => e.preventDefault()}
     >
       {loading && <p>Loading...</p>}
@@ -424,6 +424,8 @@ const nodeForm = () => {
               const { source, target } = linkDatum;
               return `M${source.x},${source.y}V${(source.y + target.y) / 2}H${target.x}V${target.y}`;
             }}
+           
+            
           />
           {renderContextMenu()}
           {nodeForm()}

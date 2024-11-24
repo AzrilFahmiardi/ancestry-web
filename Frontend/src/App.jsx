@@ -1,22 +1,18 @@
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import FamilyTree from "./components/FamilyTree"
+import LandingPage from "./LandingPage"
+import FamilyDetails from "./components/FamilyDetails";
 
 function App() {
 
 
   return (
-    <>
-    <div className="flex w-full">
-      <div className="w-[30vw] h-screen bg-red-400"></div>
-      <div className="w-[70vw]">
-        <div className="w-full h-[50px] bg-slate-900"></div>
-        {/* <FamilyTree treeId={1}/> */}
-      </div>
-      
-
-    </div>
-    
-
-    </>
+    <Router>
+        <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/family/:id" element={<FamilyDetails />} />
+        </Routes>
+    </Router>
   )
 }
 

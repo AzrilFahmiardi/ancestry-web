@@ -22,6 +22,16 @@ class FamilyTreeService {
         }
     }
 
+    async getTreesbyId(id) {
+        try {
+            const response = await this.api.get('/trees');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching trees:', error);
+            throw new Error('Failed to fetch family trees');
+        }
+    }
+
     async createTree(name) {
         try {
             const response = await this.api.post('/trees', { name });
@@ -29,6 +39,26 @@ class FamilyTreeService {
         } catch (error) {
             console.error('Error creating family tree:', error);
             throw new Error('Failed to create family tree');
+        }
+    }
+
+    async deleteTree(treeId) {
+        try {
+            const response = await this.api.delete(`/trees/${treeId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error deleting family tree:', error);
+            throw new Error('Failed to delete family tree');
+        }
+    }
+
+    async searchTrees(searchTerm) {
+        try {
+            const response = await this.api.get(`/trees/search?term=${searchTerm}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error searching trees:', error);
+            throw new Error('Failed to search family trees');
         }
     }
 

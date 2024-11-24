@@ -41,6 +41,52 @@ app.post('/trees', async (req, res) => {
     }
 });
 
+app.get('/trees/search', async (req, res) => {
+    try {
+        const { term } = req.query;
+        const [trees] = await pool.query(
+            'SELECT * FROM FamilyTree WHERE name LIKE ? ORDER BY created_at DESC',
+            [`%${term}%`]
+        );
+        res.json(trees);
+    } catch (error) {
+        console.error('Error searching trees:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/trees/:id', async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        
+        const { id } = req.params;
+        
+        // First delete all family relationships
+        await connection.query(
+            'DELETE kh FROM KeluargaHubungan kh ' +
+            'INNER JOIN Keluarga k ON (kh.ancestor_id = k.id OR kh.descendant_id = k.id) ' +
+            'WHERE k.tree_id = ?',
+            [id]
+        );
+        
+        // Then delete all family members
+        await connection.query('DELETE FROM Keluarga WHERE tree_id = ?', [id]);
+        
+        // Finally delete the tree
+        await connection.query('DELETE FROM FamilyTree WHERE id = ?', [id]);
+        
+        await connection.commit();
+        res.json({ message: 'Family tree deleted successfully' });
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error deleting family tree:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        connection.release();
+    }
+});
+
 
 app.get('/treedata/:treeId', async (req, res) => {
     try {
@@ -146,6 +192,8 @@ app.get('/treedata/:treeId', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+
 
 app.post('/family', async (req, res) => {
     try {
