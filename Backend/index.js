@@ -4,7 +4,7 @@ const pool = require("./database");
 require("dotenv").config();
 
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
 
 app.get('/trees', async (req, res) => {
     try {
-        const [trees] = await pool.query('SELECT * FROM FamilyTree ORDER BY created_at DESC');
+        const [trees] = await pool.query('SELECT * FROM familytree ORDER BY created_at DESC');
         res.json(trees);
     } catch (error) {
         console.error('Error fetching trees:', error);
@@ -27,7 +27,7 @@ app.post('/trees', async (req, res) => {
     try {
         const { name } = req.body;
         const [result] = await pool.query(
-            'INSERT INTO FamilyTree (name) VALUES (?)',
+            'INSERT INTO familytree (name) VALUES (?)',
             [name]
         );
         res.status(201).json({ 
@@ -45,7 +45,7 @@ app.get('/trees/search', async (req, res) => {
     try {
         const { term } = req.query;
         const [trees] = await pool.query(
-            'SELECT * FROM FamilyTree WHERE name LIKE ? ORDER BY created_at DESC',
+            'SELECT * FROM familytree WHERE name LIKE ? ORDER BY created_at DESC',
             [`%${term}%`]
         );
         res.json(trees);
@@ -64,17 +64,17 @@ app.delete('/trees/:id', async (req, res) => {
         
         // First delete all family relationships
         await connection.query(
-            'DELETE kh FROM KeluargaHubungan kh ' +
-            'INNER JOIN Keluarga k ON (kh.ancestor_id = k.id OR kh.descendant_id = k.id) ' +
+            'DELETE kh FROM keluargahubungan kh ' +
+            'INNER JOIN keluarga k ON (kh.ancestor_id = k.id OR kh.descendant_id = k.id) ' +
             'WHERE k.tree_id = ?',
             [id]
         );
         
         // Then delete all family members
-        await connection.query('DELETE FROM Keluarga WHERE tree_id = ?', [id]);
+        await connection.query('DELETE FROM keluarga WHERE tree_id = ?', [id]);
         
         // Finally delete the tree
-        await connection.query('DELETE FROM FamilyTree WHERE id = ?', [id]);
+        await connection.query('DELETE FROM familytree WHERE id = ?', [id]);
         
         await connection.commit();
         res.json({ message: 'Family tree deleted successfully' });
@@ -103,10 +103,10 @@ app.get('/treedata/:treeId', async (req, res) => {
                     k.id_spouse,
                     0 as level,
                     CAST(k.id AS CHAR(200)) as path
-                FROM Keluarga k
+                FROM keluarga k
                 WHERE NOT EXISTS (
                     SELECT 1 
-                    FROM KeluargaHubungan kh
+                    FROM keluargahubungan kh
                     WHERE kh.descendant_id = k.id AND kh.ancestor_id != k.id
                 )
                 AND k.tree_id = ?
@@ -122,8 +122,8 @@ app.get('/treedata/:treeId', async (req, res) => {
                     th.level + 1,
                     CONCAT(th.path, ',', k.id)
                 FROM TreeHierarchy th
-                INNER JOIN KeluargaHubungan kh ON kh.ancestor_id = th.id
-                INNER JOIN Keluarga k ON k.id = kh.descendant_id
+                INNER JOIN keluargahubungan kh ON kh.ancestor_id = th.id
+                INNER JOIN keluarga k ON k.id = kh.descendant_id
                 WHERE kh.depth = 1
             )
             SELECT 
@@ -132,7 +132,7 @@ app.get('/treedata/:treeId', async (req, res) => {
                 s.dob as spouse_dob,
                 s.status as spouse_status
             FROM TreeHierarchy h
-            LEFT JOIN Keluarga s ON h.id_spouse = s.id
+            LEFT JOIN keluarga s ON h.id_spouse = s.id
             ORDER BY h.level, h.id;
         `, [treeId]);
 
@@ -200,7 +200,7 @@ app.post('/family', async (req, res) => {
         const { name, dob, status, parentId, spouseId, treeId } = req.body;
         
         const [result] = await pool.query(
-            'INSERT INTO Keluarga (name, dob, status, id_spouse, tree_id) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO keluarga (name, dob, status, id_spouse, tree_id) VALUES (?, ?, ?, ?, ?)',
             [name, dob, status, spouseId || null, treeId]
         );
         
@@ -209,7 +209,7 @@ app.post('/family', async (req, res) => {
         // If spouse is provided, update spouse's reference
         if (spouseId) {
             await pool.query(
-                'UPDATE Keluarga SET id_spouse = ? WHERE id = ?',
+                'UPDATE keluarga SET id_spouse = ? WHERE id = ?',
                 [newMemberId, spouseId]
             );
         }
@@ -218,21 +218,21 @@ app.post('/family', async (req, res) => {
         if (parentId) {
             // Insert self-relationship first
             await pool.query(
-                'INSERT IGNORE INTO KeluargaHubungan (ancestor_id, descendant_id, depth) VALUES (?, ?, 0)',
+                'INSERT IGNORE INTO keluargahubungan (ancestor_id, descendant_id, depth) VALUES (?, ?, 0)',
                 [newMemberId, newMemberId]
             );
             
             // Insert direct relationship (depth = 1)
             await pool.query(
-                'INSERT IGNORE INTO KeluargaHubungan (ancestor_id, descendant_id, depth) VALUES (?, ?, 1)',
+                'INSERT IGNORE INTO keluargahubungan (ancestor_id, descendant_id, depth) VALUES (?, ?, 1)',
                 [parentId, newMemberId]
             );
             
             // Insert inherited relationships with IGNORE to prevent duplicates
             await pool.query(`
-                INSERT IGNORE INTO KeluargaHubungan (ancestor_id, descendant_id, depth)
+                INSERT IGNORE INTO keluargahubungan (ancestor_id, descendant_id, depth)
                 SELECT kh.ancestor_id, ?, kh.depth + 1
-                FROM KeluargaHubungan kh
+                FROM keluargahubungan kh
                 WHERE kh.descendant_id = ?
             `, [newMemberId, parentId]);
         }
@@ -258,14 +258,14 @@ app.put('/family/:id', async (req, res) => {
             // If updating a spouse, we need to find the correct record
             // First, check if this ID exists in id_spouse column
             const [spouseCheck] = await connection.query(
-                'SELECT id FROM Keluarga WHERE id = ?',
+                'SELECT id FROM keluarga WHERE id = ?',
                 [id]
             );
 
             if (spouseCheck.length > 0) {
                 // Update the spouse record
                 await connection.query(
-                    'UPDATE Keluarga SET name = ?, dob = ?, status = ? WHERE id = ?',
+                    'UPDATE keluarga SET name = ?, dob = ?, status = ? WHERE id = ?',
                     [name, dob, status, id]
                 );
             } else {
@@ -274,7 +274,7 @@ app.put('/family/:id', async (req, res) => {
         } else {
             // Update main family member
             await connection.query(
-                'UPDATE Keluarga SET name = ?, dob = ?, status = ? WHERE id = ?',
+                'UPDATE keluarga SET name = ?, dob = ?, status = ? WHERE id = ?',
                 [name, dob, status, id]
             );
         }
@@ -303,10 +303,10 @@ app.delete('/family/:id', async (req, res) => {
         
         
         // Delete relationships
-        await pool.query('DELETE FROM KeluargaHubungan WHERE ancestor_id = ? OR descendant_id = ?', [id, id]);
+        await pool.query('DELETE FROM keluargahubungan WHERE ancestor_id = ? OR descendant_id = ?', [id, id]);
         
         // Delete family member
-        await pool.query('DELETE FROM Keluarga WHERE id = ?', [id]);
+        await pool.query('DELETE FROM keluarga WHERE id = ?', [id]);
         
         res.json({ message: 'Family member deleted successfully' });
     } catch (error) {
