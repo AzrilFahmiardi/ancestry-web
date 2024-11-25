@@ -62,18 +62,15 @@ app.delete('/trees/:id', async (req, res) => {
         
         const { id } = req.params;
         
-        // First delete all family relationships
         await connection.query(
             'DELETE kh FROM keluargahubungan kh ' +
             'INNER JOIN keluarga k ON (kh.ancestor_id = k.id OR kh.descendant_id = k.id) ' +
             'WHERE k.tree_id = ?',
             [id]
         );
-        
-        // Then delete all family members
+
         await connection.query('DELETE FROM keluarga WHERE tree_id = ?', [id]);
-        
-        // Finally delete the tree
+
         await connection.query('DELETE FROM familytree WHERE id = ?', [id]);
         
         await connection.commit();
@@ -137,13 +134,13 @@ app.get('/treedata/:treeId', async (req, res) => {
         `, [treeId]);
 
         const buildFamilyTree = (data) => {
-            // Create a map for quick node lookup
+
             const nodeMap = new Map();
         
-            // First pass: create all nodes
+
             data.forEach(row => {
                 nodeMap.set(row.id, {
-                    id: row.id, // Tambahkan baris ini untuk menyertakan ID
+                    id: row.id, 
                     name: row.name,
                     attributes: {
                         dob: row.dob.toISOString().split('T')[0],
@@ -151,7 +148,7 @@ app.get('/treedata/:treeId', async (req, res) => {
                     }
                 });
         
-                // Add spouse information if exists
+ 
                 if (row.spouse_name) {
                     nodeMap.get(row.id).spouse = {
                         id:row.id_spouse,
@@ -162,7 +159,7 @@ app.get('/treedata/:treeId', async (req, res) => {
                 }
             });
         
-            // Second pass: build the tree structure
+
             data.forEach(row => {
                 if (row.path) {
                     const pathIds = row.path.split(',').map(Number);
@@ -179,7 +176,7 @@ app.get('/treedata/:treeId', async (req, res) => {
                 }
             });
         
-            // Return the root node
+
             const rootNode = data.find(row => row.level === 0);
             return rootNode ? nodeMap.get(rootNode.id) : null;
         };
@@ -206,7 +203,7 @@ app.post('/family', async (req, res) => {
         
         const newMemberId = result.insertId;
         
-        // If spouse is provided, update spouse's reference
+
         if (spouseId) {
             await pool.query(
                 'UPDATE keluarga SET id_spouse = ? WHERE id = ?',
@@ -214,21 +211,19 @@ app.post('/family', async (req, res) => {
             );
         }
         
-        // If parent is provided, create relationship
+
         if (parentId) {
-            // Insert self-relationship first
+
             await pool.query(
                 'INSERT IGNORE INTO keluargahubungan (ancestor_id, descendant_id, depth) VALUES (?, ?, 0)',
                 [newMemberId, newMemberId]
             );
             
-            // Insert direct relationship (depth = 1)
             await pool.query(
                 'INSERT IGNORE INTO keluargahubungan (ancestor_id, descendant_id, depth) VALUES (?, ?, 1)',
                 [parentId, newMemberId]
             );
             
-            // Insert inherited relationships with IGNORE to prevent duplicates
             await pool.query(`
                 INSERT IGNORE INTO keluargahubungan (ancestor_id, descendant_id, depth)
                 SELECT kh.ancestor_id, ?, kh.depth + 1
@@ -255,15 +250,13 @@ app.put('/family/:id', async (req, res) => {
         console.log('Updating member:', { id, name, dob, status, isSpouse });
 
         if (isSpouse) {
-            // If updating a spouse, we need to find the correct record
-            // First, check if this ID exists in id_spouse column
+
             const [spouseCheck] = await connection.query(
                 'SELECT id FROM keluarga WHERE id = ?',
                 [id]
             );
 
             if (spouseCheck.length > 0) {
-                // Update the spouse record
                 await connection.query(
                     'UPDATE keluarga SET name = ?, dob = ?, status = ? WHERE id = ?',
                     [name, dob, status, id]
@@ -272,7 +265,6 @@ app.put('/family/:id', async (req, res) => {
                 throw new Error('Spouse record not found');
             }
         } else {
-            // Update main family member
             await connection.query(
                 'UPDATE keluarga SET name = ?, dob = ?, status = ? WHERE id = ?',
                 [name, dob, status, id]
@@ -302,10 +294,8 @@ app.delete('/family/:id', async (req, res) => {
         console.log(id);
         
         
-        // Delete relationships
         await pool.query('DELETE FROM keluargahubungan WHERE ancestor_id = ? OR descendant_id = ?', [id, id]);
-        
-        // Delete family member
+
         await pool.query('DELETE FROM keluarga WHERE id = ?', [id]);
         
         res.json({ message: 'Family member deleted successfully' });

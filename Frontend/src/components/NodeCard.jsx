@@ -2,7 +2,7 @@ import React from "react";
 
 const NodeCard = ({ nodeDatum }) => {
   const nodeWidth = 200;
-  const spouseOffset = nodeWidth + 20; // Jarak pasangan
+  const spouseOffset = nodeWidth + 20; 
 
   return (
     <>

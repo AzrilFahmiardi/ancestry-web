@@ -55,7 +55,6 @@ const FamilyTreeComponent = ({treeId}) => {
     console.log("Right Click Node Data:", nodeDatum);
     console.log("Is Spouse:", isSpouse);
     
-    // Use the nodeDatum directly as it's already properly formatted in renderCustomNode
     setContextMenu({
         visible: true,
         x: event.pageX,
@@ -67,8 +66,7 @@ const FamilyTreeComponent = ({treeId}) => {
 };
 
   const handleAddChild = () => {
-    // Find the parent ID from the node's path or other identifiable information
-    const parentId = contextMenu.nodeData.id; // This needs to be sourced correctly
+    const parentId = contextMenu.nodeData.id; 
     setFormData({
       name: "",
       dob: "",
@@ -81,7 +79,7 @@ const FamilyTreeComponent = ({treeId}) => {
   };
 
   const handleAddSpouse = () => {
-    const currentNodeId = contextMenu.nodeData.id; // This needs to be sourced correctly
+    const currentNodeId = contextMenu.nodeData.id; 
     setFormData({
       name: "",
       dob: "",
@@ -94,15 +92,12 @@ const FamilyTreeComponent = ({treeId}) => {
   };
 
   const handleEdit = () => {
-    // Determine if we're editing a spouse
     const isEditingSpouse = contextMenu.isSpouse;
     
-    // Get the correct data based on whether we're editing main person or spouse
     let editData;
     let editId;
     
     if (isEditingSpouse) {
-        // For spouse, use the spouse data
         editData = {
             name: contextMenu.nodeData.name,
             dob: contextMenu.nodeData.dob,
@@ -110,7 +105,6 @@ const FamilyTreeComponent = ({treeId}) => {
         };
         editId = contextMenu.nodeData.id;
     } else {
-        // For main person, use the main data     
         editData = {
             name: contextMenu.nodeData.name,
             dob: contextMenu.nodeData.attributes?.dob,
@@ -140,13 +134,11 @@ const FamilyTreeComponent = ({treeId}) => {
       const deleteId = contextMenu.nodeData.id;
       await familyTreeService.deleteFamilyMember(deleteId);
       
-      // Reload family tree after deletion
       loadFamilyTree();
       
       setContextMenu({ ...contextMenu, visible: false });
     } catch (error) {
       console.error("Error deleting family member:", error);
-      // Optionally show error message to user
     }
   };
 
@@ -174,14 +166,12 @@ const FamilyTreeComponent = ({treeId}) => {
         });
 
         if (formData.editId) {
-            // Edit existing person or spouse
             await familyTreeService.updateFamilyMember(
                 formData.editId,
                 submissionData,
                 formData.isEditingSpouse
             );
         } else if (formData.parentID || formData.spouseID) {
-            // Add new person
             await familyTreeService.addFamilyMember({
                 ...submissionData,
                 parentId: formData.parentID,
@@ -189,7 +179,6 @@ const FamilyTreeComponent = ({treeId}) => {
             });
         }
 
-        // Reset form and reload tree
         setFormData({
             name: "",
             dob: "",

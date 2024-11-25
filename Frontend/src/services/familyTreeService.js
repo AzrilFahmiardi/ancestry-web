@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://ancestry-web.onrender.com/';
+const API_BASE_URL = 'https://ancestry-web.onrender.com';
+// const API_BASE_URL = 'http://localhost:5000';
 
 class FamilyTreeService {
     constructor() {
@@ -62,7 +63,6 @@ class FamilyTreeService {
         }
     }
 
-    // Fetch family tree data
     async getFamilyTree(treeId) {
         try {
             const response = await this.api.get(`/treedata/${treeId}`);
@@ -73,7 +73,6 @@ class FamilyTreeService {
         }
     }
 
-    // Add new family member
     async addFamilyMember(memberData) {
         try {
             const response = await this.api.post('/family', {
@@ -87,13 +86,12 @@ class FamilyTreeService {
         }
     }
 
-    // Update family member
     async updateFamilyMember(id, memberData, isSpouse = false) {
         try {
             console.log('Updating member:', { id, memberData, isSpouse });
             const response = await this.api.put(`/family/${id}`, {
                 ...memberData,
-                isSpouse  // Pass the isSpouse flag to the backend
+                isSpouse  
             });
             return response.data;
         } catch (error) {
@@ -102,7 +100,6 @@ class FamilyTreeService {
         }
     }
 
-    // Delete family member
     async deleteFamilyMember(id) {
         try {
             const response = await this.api.delete(`/family/${id}`);
@@ -113,10 +110,9 @@ class FamilyTreeService {
         }
     }
 
-    // Add spouse to a family member
+
     async addSpouse(mainMemberId, spouseData) {
         try {
-            // Add spouse first, then link to main member
             const spouseResponse = await this.api.post('/family', {
                 ...spouseData,
                 spouseId: mainMemberId

@@ -49,7 +49,6 @@ function LandingPage() {
     const handleDelete = async (treeId) => {
         try {
             await familyTreeService.deleteTree(treeId);
-            // Refresh the list after deletion
             await loadFamily();
         } catch (error) {
             console.error("Error deleting family tree:", error);
@@ -78,11 +77,9 @@ function LandingPage() {
         setIsLoading(true);
 
         try {
-            // First, create the family tree
             const treeResponse = await familyTreeService.createTree(formData.familyName);
             const treeId = treeResponse.id;
 
-            // Then, add the ancestor as the first family member
             await familyTreeService.addFamilyMember({
                 name: formData.ancestorName,
                 dob: formData.dob,
@@ -90,13 +87,8 @@ function LandingPage() {
                 treeId: treeId
             });
 
-            // Refresh the family list
             await loadFamily();
-            
-            // Close the form
             setShowForm(false);
-            
-            // Reset form data
             setFormData({
                 familyName: '',
                 ancestorName: '',
@@ -104,11 +96,9 @@ function LandingPage() {
                 status: 'hidup'
             });
 
-            // Navigate to the new family tree
             navigate(`/family/${treeId}`);
         } catch (error) {
             console.error('Error creating family tree:', error);
-            // Here you might want to add error handling UI
         } finally {
             setIsLoading(false);
         }

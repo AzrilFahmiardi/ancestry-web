@@ -4,7 +4,6 @@ function TreeCard({ family, onDelete }) {
     const navigate = useNavigate();
 
     const handleClick = (e) => {
-        // Prevent navigation if clicking delete button
         if (e.target.closest('.delete-btn')) return;
         navigate(`/family/${family.id}`);
     };
